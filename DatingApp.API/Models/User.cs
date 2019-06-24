@@ -1,5 +1,8 @@
 namespace DatingApp.API.Models
 {
+    /// <summary>
+    /// User in the system
+    /// </summary>
     public class User
     {
         public int Id { get; set; }
