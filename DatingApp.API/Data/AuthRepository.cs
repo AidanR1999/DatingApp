@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using DatingApp.API.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace DatingApp.API.Data
 {
@@ -15,9 +16,56 @@ namespace DatingApp.API.Data
         {
             _context = context;
         } 
-        public Task<User> Login(string username, string password)
+
+        /// <summary>
+        /// attempts to log the user in
+        /// </summary>
+        /// <param name="username">username user has entered</param>
+        /// <param name="password">password user has entered</param>
+        /// <returns>user object</returns>
+        public async Task<User> Login(string username, string password)
         {
-            throw new System.NotImplementedException();
+            //get user from database
+            var user = await _context.Users.FirstOrDefaultAsync(x => x.Username == username);
+
+            //if username doesnt exist, return null
+            if(user == null)
+                return null;
+            
+            //if passwords don't match, return null
+            if(!VerifyPasswordHash(password, user.PasswordHash, user.PasswordSalt))
+                return null;
+            
+            //return user on success
+            return user;
+        }
+
+        /// <summary>
+        /// checks that the password hashes match
+        /// </summary>
+        /// <param name="password">password user has entered</param>
+        /// <param name="passwordHash">hashed password of potential user</param>
+        /// <param name="passwordSalt">salt key of potential user</param>
+        /// <returns>boolean</returns>
+        private bool VerifyPasswordHash(string password, byte[] passwordHash, byte[] passwordSalt)
+        {
+            //dispose of cryptography after use for security
+            using(var hmac = new System.Security.Cryptography.HMACSHA512(passwordSalt))
+            {
+                //generate hash
+                var computedHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
+
+                //compare hashes using for loop due to byte arrays
+                for(int i = 0; i < computedHash.Length; i++)
+                {
+                    //if discrepency, return false
+                    if(computedHash[i] != passwordHash[i])
+                        return false;
+                } 
+            }
+
+            //on success, return true
+            return true;
         }
 
         /// <summary>
@@ -62,9 +110,19 @@ namespace DatingApp.API.Data
             }
         }
 
-        public Task<bool> UserExists(string username)
+        /// <summary>
+        /// check if user exists
+        /// </summary>
+        /// <param name="username">username entered</param>
+        /// <returns>boolean</returns>
+        public async Task<bool> UserExists(string username)
         {
-            throw new System.NotImplementedException();
+            //if user exists, return true
+            if(await _context.Users.AnyAsync(x => x.Username == username))
+                return true;
+
+            //on fail, return false
+            return false;
         }
     }
 }
